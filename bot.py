@@ -109,34 +109,38 @@ async def delcanal(interaction: discord.Interaction):
 def construir_ranking(datos):
     if not datos:
         return None
-    ordenados = sorted(datos.items(), key=lambda x: x[1]["puntos"], reverse=True)
-    mensaje = "# Ranking general del servidor\n\n"
-    mensaje += f"\n _Este ranking es un conteo de puntos del servidor, estos se adquieren por participación constante en torneos y quedar en el top 3 del mismo._ \n\n"
-    for i, (uid, u) in enumerate(ordenados, 1):
-        mensaje += f"**{i}.** <@{uid}> - {u['puntos']} pts\n"
     from datetime import datetime
-    mensaje += f"\n|| Actualizado: {datetime.now().strftime('%d/%m/%Y %H:%M')} ||"
-    return mensaje
+    ordenados = sorted(datos.items(), key=lambda x: x[1]["puntos"], reverse=True)
+    desc = "_Este ranking es un conteo de puntos del servidor, estos se adquieren por participación constante en torneos y quedar en el top 3 del mismo._\n\n"
+    for i, (uid, u) in enumerate(ordenados, 1):
+        desc += f"**{i}.** <@{uid}> — **{u['puntos']}** pts\n"
+    embed = discord.Embed(
+        title="🏆 Ranking general del servidor",
+        description=desc,
+        color=0xF1C40F
+    )
+    embed.set_footer(text=f"Actualizado: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+    return embed
 
 @bot.tree.command(name="ranking", description="Muestra la lista de todos los usuarios con puntos", guild=GUILD)
 async def ranking(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
     config = cargar_config()
     datos = cargar_datos()
-    mensaje = construir_ranking(datos)
-    if not mensaje:
+    embed = construir_ranking(datos)
+    if not embed:
         return await interaction.followup.send("No hay usuarios registrados.", ephemeral=True)
     canal_id = config.get("canal_puntos")
     if canal_id:
         canal = bot.get_channel(int(canal_id))
         if canal:
-            msg = await canal.send(mensaje)
+            msg = await canal.send(embed=embed)
             config["ranking_msg_id"] = msg.id
             config["ranking_channel_id"] = canal.id
             guardar_config(config)
             await interaction.followup.send(f"Ranking enviado a {canal.mention}", ephemeral=True)
             return
-    msg = await interaction.followup.send(mensaje, ephemeral=True)
+    msg = await interaction.followup.send(embed=embed, ephemeral=True)
     config["ranking_msg_id"] = msg.id
     config["ranking_channel_id"] = interaction.channel_id
     guardar_config(config)
@@ -159,10 +163,10 @@ async def updateranking(interaction: discord.Interaction):
     except discord.NotFound:
         return await interaction.followup.send("El mensaje original fue eliminado. Ejecutá /ranking de nuevo.", ephemeral=True)
     datos = cargar_datos()
-    mensaje = construir_ranking(datos)
-    if not mensaje:
+    embed = construir_ranking(datos)
+    if not embed:
         return await interaction.followup.send("No hay usuarios registrados.", ephemeral=True)
-    await msg.edit(content=mensaje)
+    await msg.edit(embed=embed)
     await interaction.followup.send("Ranking actualizado.", ephemeral=True)
 
 @app_commands.checks.has_permissions(administrator=True)
