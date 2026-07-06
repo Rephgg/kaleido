@@ -15,6 +15,8 @@ Bot de Discord con sistema de puntos para servidores.
 | `/puntos [@user]` | Muestra puntos de un usuario | Todos |
 | `/setcanal #canal` | Configura canal para respuestas | Admin |
 | `/delcanal` | Elimina canal configurado | Admin |
+| `/updateranking` | Actualiza el mensaje del ranking | Admin |
+| `/help` | Muestra todos los comandos | Todos |
 
 ## Stack
 

@@ -109,12 +109,13 @@ async def delcanal(interaction: discord.Interaction):
 def construir_ranking(datos):
     if not datos:
         return None
-    ordenados = sorted(datos.values(), key=lambda x: x["puntos"], reverse=True)
-    mensaje = "**🏆 Ranking de Puntos 🏆**\n\n"
-    for i, u in enumerate(ordenados, 1):
-        mensaje += f"{i}. **{u['nombre']}** - {u['puntos']} pts\n"
+    ordenados = sorted(datos.items(), key=lambda x: x[1]["puntos"], reverse=True)
+    mensaje = "# Ranking general del servidor\n\n"
+    mensaje += f"\n _Este ranking es un conteo de puntos del servidor, estos se adquieren por participación constante en torneos y quedar en el top 3 del mismo._ \n\n"
+    for i, (uid, u) in enumerate(ordenados, 1):
+        mensaje += f"**{i}.** <@{uid}> - {u['puntos']} pts\n"
     from datetime import datetime
-    mensaje += f"\n_Actualizado: {datetime.now().strftime('%d/%m/%Y %H:%M')}_"
+    mensaje += f"\n|| Actualizado: {datetime.now().strftime('%d/%m/%Y %H:%M')} ||"
     return mensaje
 
 @bot.tree.command(name="ranking", description="Muestra la lista de todos los usuarios con puntos", guild=GUILD)
@@ -182,6 +183,23 @@ async def puntos(interaction: discord.Interaction, miembro: discord.Member = Non
             await interaction.followup.send(f"Respuesta enviada a {canal.mention}", ephemeral=True)
             return
     await interaction.followup.send(f"{miembro.mention} tiene **{datos[uid]['puntos']}** puntos.", ephemeral=True)
+
+@bot.tree.command(name="help", description="Muestra todos los comandos disponibles", guild=GUILD)
+async def help(interaction: discord.Interaction):
+    es_admin = interaction.user.guild_permissions.administrator
+    txt = "**📋 Comandos del Bot**\n\n"
+    txt += "**📊 Puntos**\n"
+    txt += "`/ranking` - Muestra el ranking de todos los usuarios\n"
+    txt += "`/puntos [@user]` - Consulta tus puntos o los de otro\n"
+    txt += "`/updateranking` - Actualiza el mensaje del ranking\n"
+    if es_admin:
+        txt += "\n**🔧 Admin**\n"
+        txt += "`/addpoints @user <pts>` - Agrega puntos a un usuario\n"
+        txt += "`/setpoints @user <pts>` - Asigna puntos exactos\n"
+        txt += "`/delpoints @user` - Elimina usuario de la lista\n"
+        txt += "`/setcanal #canal` - Configura canal de respuestas\n"
+        txt += "`/delcanal` - Elimina canal configurado\n"
+    await interaction.response.send_message(txt, ephemeral=True)
 
 @addpoints.error
 @setpoints.error
