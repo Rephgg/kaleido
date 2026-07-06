@@ -4,7 +4,7 @@ Bot de Discord con sistema de puntos para servidores.
 
 ## Comandos
 
-### Slash commands (/)
+### Slash commands globales (funcionan en cualquier servidor)
 
 | Comando | Descripción | Permisos |
 |---|---|---|

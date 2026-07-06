@@ -9,7 +9,7 @@ Bot de Discord para sistema de puntos.
 - terms.html - términos de servicio (GitHub Pages)
 - privacy.html - política de privacidad (GitHub Pages)
 
-## Slash commands implementados
+## Slash commands globales (funcionan en cualquier servidor)
 - /addpoints @user <cantidad> - suma puntos (solo admin)
 - /setpoints @user <cantidad> - asigna puntos exactos (solo admin)
 - /delpoints @user - elimina usuario de lista (solo admin)
