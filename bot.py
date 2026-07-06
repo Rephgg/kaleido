@@ -8,6 +8,8 @@ from dotenv import load_dotenv
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
 
+CONFIG_FILE = "config.json"
+
 intents = discord.Intents.default()
 intents.message_content = True
 
@@ -24,6 +26,16 @@ def cargar_datos():
 def guardar_datos(datos):
     with open(DATA_FILE, "w", encoding="utf-8") as f:
         json.dump(datos, f, indent=4, ensure_ascii=False)
+
+def cargar_config():
+    if not os.path.exists(CONFIG_FILE):
+        return {}
+    with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+def guardar_config(config):
+    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=4, ensure_ascii=False)
 
 @bot.event
 async def on_ready():
@@ -70,26 +82,63 @@ async def delpoints(interaction: discord.Interaction, miembro: discord.Member):
     guardar_datos(datos)
     await interaction.response.send_message(f"{miembro.mention} eliminado de la lista de puntos.")
 
+@bot.tree.command(name="setcanal", description="Configura el canal para respuestas de ranking y puntos")
+@app_commands.checks.has_permissions(administrator=True)
+@app_commands.describe(canal="Canal donde se enviarán las respuestas")
+async def setcanal(interaction: discord.Interaction, canal: discord.TextChannel):
+    config = cargar_config()
+    config["canal_puntos"] = canal.id
+    guardar_config(config)
+    await interaction.response.send_message(f"Canal de respuestas configurado a {canal.mention}", ephemeral=True)
+
+@bot.tree.command(name="delcanal", description="Elimina la configuración del canal de respuestas")
+@app_commands.checks.has_permissions(administrator=True)
+async def delcanal(interaction: discord.Interaction):
+    config = cargar_config()
+    if "canal_puntos" not in config:
+        return await interaction.response.send_message("No hay un canal configurado.", ephemeral=True)
+    del config["canal_puntos"]
+    guardar_config(config)
+    await interaction.response.send_message("Canal de respuestas eliminado. Ahora las respuestas vuelven al canal actual.", ephemeral=True)
+
 @bot.tree.command(name="ranking", description="Muestra la lista de todos los usuarios con puntos")
 async def ranking(interaction: discord.Interaction):
+    await interaction.response.defer(ephemeral=True)
+    config = cargar_config()
     datos = cargar_datos()
     if not datos:
-        return await interaction.response.send_message("No hay usuarios registrados.")
+        return await interaction.followup.send("No hay usuarios registrados.", ephemeral=True)
     ordenados = sorted(datos.values(), key=lambda x: x["puntos"], reverse=True)
     mensaje = "**🏆 Ranking de Puntos 🏆**\n\n"
     for i, u in enumerate(ordenados, 1):
         mensaje += f"{i}. **{u['nombre']}** - {u['puntos']} pts\n"
-    await interaction.response.send_message(mensaje)
+    canal_id = config.get("canal_puntos")
+    if canal_id:
+        canal = bot.get_channel(int(canal_id))
+        if canal:
+            await canal.send(mensaje)
+            await interaction.followup.send(f"Ranking enviado a {canal.mention}", ephemeral=True)
+            return
+    await interaction.followup.send(mensaje, ephemeral=True)
 
 @bot.tree.command(name="puntos", description="Muestra los puntos de un miembro o los tuyos")
 @app_commands.describe(miembro="Miembro a consultar (opcional)")
 async def puntos(interaction: discord.Interaction, miembro: discord.Member = None):
+    await interaction.response.defer(ephemeral=True)
+    config = cargar_config()
     miembro = miembro or interaction.user
     datos = cargar_datos()
     uid = str(miembro.id)
     if uid not in datos:
-        return await interaction.response.send_message(f"{miembro.mention} no tiene puntos registrados.")
-    await interaction.response.send_message(f"{miembro.mention} tiene **{datos[uid]['puntos']}** puntos.")
+        return await interaction.followup.send(f"{miembro.mention} no tiene puntos registrados.", ephemeral=True)
+    canal_id = config.get("canal_puntos")
+    if canal_id:
+        canal = bot.get_channel(int(canal_id))
+        if canal:
+            await canal.send(f"{miembro.mention} tiene **{datos[uid]['puntos']}** puntos.")
+            await interaction.followup.send(f"Respuesta enviada a {canal.mention}", ephemeral=True)
+            return
+    await interaction.followup.send(f"{miembro.mention} tiene **{datos[uid]['puntos']}** puntos.", ephemeral=True)
 
 @addpoints.error
 @setpoints.error
