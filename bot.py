@@ -37,19 +37,14 @@ def guardar_config(config):
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=4, ensure_ascii=False)
 
-GUILD_ID = 1120824499198234807
-GUILD = discord.Object(id=GUILD_ID)
-
 @bot.event
 async def on_ready():
-    bot.tree.clear_commands(guild=None)
-    await bot.tree.sync(guild=None)
-    await bot.tree.sync(guild=GUILD)
+    await bot.tree.sync()
     print(f"Bot conectado como {bot.user}")
 
 @app_commands.default_permissions(administrator=True)
 @app_commands.checks.has_permissions(administrator=True)
-@bot.tree.command(name="addpoints", description="Agrega puntos a un miembro", guild=GUILD)
+@bot.tree.command(name="addpoints", description="Agrega puntos a un miembro")
 @app_commands.describe(miembro="Miembro a añadir puntos", puntos="Cantidad de puntos")
 async def addpoints(interaction: discord.Interaction, miembro: discord.Member, puntos: int):
     datos = cargar_datos()
@@ -65,7 +60,7 @@ async def addpoints(interaction: discord.Interaction, miembro: discord.Member, p
 
 @app_commands.default_permissions(administrator=True)
 @app_commands.checks.has_permissions(administrator=True)
-@bot.tree.command(name="setpoints", description="Establece los puntos exactos de un miembro", guild=GUILD)
+@bot.tree.command(name="setpoints", description="Establece los puntos exactos de un miembro")
 @app_commands.describe(miembro="Miembro a modificar", puntos="Nuevos puntos")
 async def setpoints(interaction: discord.Interaction, miembro: discord.Member, puntos: int):
     datos = cargar_datos()
@@ -76,7 +71,7 @@ async def setpoints(interaction: discord.Interaction, miembro: discord.Member, p
 
 @app_commands.default_permissions(administrator=True)
 @app_commands.checks.has_permissions(administrator=True)
-@bot.tree.command(name="delpoints", description="Elimina un miembro de la lista de puntos", guild=GUILD)
+@bot.tree.command(name="delpoints", description="Elimina un miembro de la lista de puntos")
 @app_commands.describe(miembro="Miembro a eliminar")
 async def delpoints(interaction: discord.Interaction, miembro: discord.Member):
     datos = cargar_datos()
@@ -87,7 +82,7 @@ async def delpoints(interaction: discord.Interaction, miembro: discord.Member):
     guardar_datos(datos)
     await interaction.response.send_message(f"{miembro.mention} eliminado de la lista de puntos.")
 
-@bot.tree.command(name="setcanal", description="Configura el canal para respuestas de ranking y puntos", guild=GUILD)
+@bot.tree.command(name="setcanal", description="Configura el canal para respuestas de ranking y puntos")
 @app_commands.checks.has_permissions(administrator=True)
 @app_commands.describe(canal="Canal donde se enviarán las respuestas")
 async def setcanal(interaction: discord.Interaction, canal: discord.TextChannel):
@@ -96,7 +91,7 @@ async def setcanal(interaction: discord.Interaction, canal: discord.TextChannel)
     guardar_config(config)
     await interaction.response.send_message(f"Canal de respuestas configurado a {canal.mention}", ephemeral=True)
 
-@bot.tree.command(name="delcanal", description="Elimina la configuración del canal de respuestas", guild=GUILD)
+@bot.tree.command(name="delcanal", description="Elimina la configuración del canal de respuestas")
 @app_commands.checks.has_permissions(administrator=True)
 async def delcanal(interaction: discord.Interaction):
     config = cargar_config()
@@ -128,7 +123,7 @@ def construir_ranking(datos):
     embed.set_footer(text=f"Actualizado: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
     return embed
 
-@bot.tree.command(name="ranking", description="Muestra la lista de todos los usuarios con puntos", guild=GUILD)
+@bot.tree.command(name="ranking", description="Muestra la lista de todos los usuarios con puntos")
 async def ranking(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
     config = cargar_config()
@@ -153,7 +148,7 @@ async def ranking(interaction: discord.Interaction):
 
 @app_commands.default_permissions(administrator=True)
 @app_commands.checks.has_permissions(administrator=True)
-@bot.tree.command(name="updateranking", description="Actualiza el mensaje del ranking con los datos más recientes", guild=GUILD)
+@bot.tree.command(name="updateranking", description="Actualiza el mensaje del ranking con los datos más recientes")
 async def updateranking(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
     config = cargar_config()
@@ -176,12 +171,12 @@ async def updateranking(interaction: discord.Interaction):
     await interaction.followup.send("Ranking actualizado.", ephemeral=True)
 
 @app_commands.checks.has_permissions(administrator=True)
-@bot.tree.command(name="say", description="El bot repite el texto que escribas", guild=GUILD)
+@bot.tree.command(name="say", description="El bot repite el texto que escribas")
 @app_commands.describe(texto="Texto que quieres que diga el bot")
 async def say(interaction: discord.Interaction, texto: str):
     await interaction.response.send_message(texto)
 
-@bot.tree.command(name="puntos", description="Muestra los puntos de un miembro o los tuyos", guild=GUILD)
+@bot.tree.command(name="puntos", description="Muestra los puntos de un miembro o los tuyos")
 @app_commands.describe(miembro="Miembro a consultar (opcional)")
 async def puntos(interaction: discord.Interaction, miembro: discord.Member = None):
     await interaction.response.defer(ephemeral=True)
@@ -200,7 +195,7 @@ async def puntos(interaction: discord.Interaction, miembro: discord.Member = Non
             return
     await interaction.followup.send(f"{miembro.mention} tiene **{datos[uid]['puntos']}** puntos.", ephemeral=True)
 
-@bot.tree.command(name="help", description="Muestra todos los comandos disponibles", guild=GUILD)
+@bot.tree.command(name="help", description="Muestra todos los comandos disponibles")
 async def help(interaction: discord.Interaction):
     es_admin = interaction.user.guild_permissions.administrator
     txt = "**📋 Comandos del Bot**\n\n"
