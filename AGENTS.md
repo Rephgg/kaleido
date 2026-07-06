@@ -17,6 +17,7 @@ Bot de Discord para sistema de puntos.
 - /puntos [@user] - consulta puntos
 - /setcanal #canal - configura canal para respuestas de ranking/puntos (solo admin)
 - /delcanal - elimina canal configurado (solo admin)
+- /updateranking - actualiza el mensaje del ranking existente con datos recientes + timestamp (solo admin)
 
 ## Hosting
 - Código en GitHub: https://github.com/Rephgg/kaleido
