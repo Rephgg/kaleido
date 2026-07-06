@@ -18,6 +18,7 @@ Bot de Discord para sistema de puntos.
 - /setcanal #canal - configura canal para respuestas de ranking/puntos (solo admin)
 - /delcanal - elimina canal configurado (solo admin)
 - /updateranking - actualiza el mensaje del ranking existente con datos recientes + timestamp (solo admin)
+- /say <texto> - el bot repite el texto (solo admin)
 - /help - muestra todos los comandos disponibles
 
 ## Hosting

@@ -16,6 +16,7 @@ Bot de Discord con sistema de puntos para servidores.
 | `/setcanal #canal` | Configura canal para respuestas | Admin |
 | `/delcanal` | Elimina canal configurado | Admin |
 | `/updateranking` | Actualiza el mensaje del ranking | Admin |
+| `/say <texto>` | El bot repite el texto | Admin |
 | `/help` | Muestra todos los comandos | Todos |
 
 ## Stack
