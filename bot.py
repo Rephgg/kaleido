@@ -165,6 +165,12 @@ async def updateranking(interaction: discord.Interaction):
     await msg.edit(content=mensaje)
     await interaction.followup.send("Ranking actualizado.", ephemeral=True)
 
+@app_commands.checks.has_permissions(administrator=True)
+@bot.tree.command(name="say", description="El bot repite el texto que escribas", guild=GUILD)
+@app_commands.describe(texto="Texto que quieres que diga el bot")
+async def say(interaction: discord.Interaction, texto: str):
+    await interaction.response.send_message(texto)
+
 @bot.tree.command(name="puntos", description="Muestra los puntos de un miembro o los tuyos", guild=GUILD)
 @app_commands.describe(miembro="Miembro a consultar (opcional)")
 async def puntos(interaction: discord.Interaction, miembro: discord.Member = None):
