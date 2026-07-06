@@ -111,14 +111,20 @@ def construir_ranking(datos):
         return None
     from datetime import datetime
     ordenados = sorted(datos.items(), key=lambda x: x[1]["puntos"], reverse=True)
-    desc = "_Este ranking es un conteo de puntos del servidor, estos se adquieren por participación constante en torneos y quedar en el top 3 del mismo._\n\n"
+    desc = "_Este ranking es un conteo de puntos del servidor, estos se adquieren por participación constante en torneos y quedar en el top 3 del mismo._\n"
+    embed = discord.Embed(title="🏆 Ranking general del servidor", description=desc, color=0xF1C40F)
+    top3 = ""
+    resto = ""
     for i, (uid, u) in enumerate(ordenados, 1):
-        desc += f"**{i}.** <@{uid}> — **{u['puntos']}** pts\n"
-    embed = discord.Embed(
-        title="🏆 Ranking general del servidor",
-        description=desc,
-        color=0xF1C40F
-    )
+        linea = f"**{i}.** <@{uid}> — **{u['puntos']}** pts\n"
+        if i <= 3:
+            top3 += linea
+        else:
+            resto += linea
+    if top3:
+        embed.add_field(name="🥇 Top 3", value=top3, inline=False)
+    if resto:
+        embed.add_field(name="📋 Resto del ranking", value=resto, inline=False)
     embed.set_footer(text=f"Actualizado: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
     return embed
 
