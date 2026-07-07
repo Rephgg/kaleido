@@ -24,7 +24,7 @@ Bot de Discord para sistema de puntos.
 ## Hosting
 - Código en GitHub: https://github.com/Rephgg/kaleido
 - GitHub Pages activado para terms y privacy
-- Pendiente: deploy en Render
+- Desplegado en Render (24/7)
 
 ## Pendiente
-- Hacer deploy en Render para que el bot esté 24/7
+- Migrar almacenamiento a MongoDB Atlas (actualmente JSON local, se pierde en cada deploy de Render)

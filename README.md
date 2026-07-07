@@ -27,10 +27,9 @@ Bot de Discord con sistema de puntos para servidores.
 
 ## Hosting
 
-- Código en GitHub
-- Desplegado en Render
-
-## Enlaces
-
+- Código en GitHub: https://github.com/Rephgg/kaleido
+- Desplegado en Render (24/7)
 - [Términos de Servicio](https://rephgg.github.io/kaleido/terms.html)
 - [Política de Privacidad](https://rephgg.github.io/kaleido/privacy.html)
+
+
