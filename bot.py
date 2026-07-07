@@ -1,5 +1,6 @@
 import os
 import json
+import asyncio
 import discord
 from discord import app_commands
 from discord.ext import commands
@@ -219,18 +220,25 @@ async def perm_error(interaction: discord.Interaction, error):
     if isinstance(error, app_commands.MissingPermissions):
         await interaction.response.send_message("No tenés permiso para usar este comando.", ephemeral=True)
 
-import threading, http.server
+from aiohttp import web
 
-class HealthHandler(http.server.BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"Bot online")
-    def log_message(self, *a):
-        pass
+async def health(request):
+    return web.Response(text="Bot online")
 
-PORT = int(os.getenv("PORT", 10000))
-t = threading.Thread(target=http.server.HTTPServer(("0.0.0.0", PORT), HealthHandler).serve_forever, daemon=True)
-t.start()
+async def run_http():
+    PORT = int(os.getenv("PORT", 10000))
+    app = web.Application()
+    app.router.add_get("/", health)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", PORT)
+    await site.start()
 
-bot.run(TOKEN)
+async def main():
+    await run_http()
+    await bot.start(TOKEN)
+
+try:
+    asyncio.run(main())
+except KeyboardInterrupt:
+    pass
