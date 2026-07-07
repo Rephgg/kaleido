@@ -219,4 +219,18 @@ async def perm_error(interaction: discord.Interaction, error):
     if isinstance(error, app_commands.MissingPermissions):
         await interaction.response.send_message("No tenés permiso para usar este comando.", ephemeral=True)
 
+import threading, http.server
+
+class HealthHandler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot online")
+    def log_message(self, *a):
+        pass
+
+PORT = int(os.getenv("PORT", 10000))
+t = threading.Thread(target=http.server.HTTPServer(("0.0.0.0", PORT), HealthHandler).serve_forever, daemon=True)
+t.start()
+
 bot.run(TOKEN)
