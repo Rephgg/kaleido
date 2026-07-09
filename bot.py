@@ -5,7 +5,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from dotenv import load_dotenv
-from motor.motor_asyncio import AsyncIOMotorClient
+from pymongo import MongoClient
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
@@ -18,36 +18,51 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-mongo_client = AsyncIOMotorClient(MONGO_URI)
+mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
 db = mongo_client["kaleido"]
 coleccion_puntos = db["puntos"]
 
-async def cargar_datos():
-    docs = await coleccion_puntos.find().to_list(length=None)
+def _cargar_datos():
+    docs = list(coleccion_puntos.find())
     return {d["_id"]: {"nombre": d["nombre"], "puntos": d["puntos"]} for d in docs}
 
-async def agregar_puntos(user_id, nombre, cantidad):
-    await coleccion_puntos.update_one(
+def _agregar_puntos(user_id, nombre, cantidad):
+    coleccion_puntos.update_one(
         {"_id": user_id},
         {"$inc": {"puntos": cantidad}, "$set": {"nombre": nombre}},
         upsert=True
     )
-    doc = await coleccion_puntos.find_one({"_id": user_id})
+    doc = coleccion_puntos.find_one({"_id": user_id})
     return doc["puntos"]
 
-async def setear_puntos(user_id, nombre, puntos):
-    await coleccion_puntos.update_one(
+def _setear_puntos(user_id, nombre, puntos):
+    coleccion_puntos.update_one(
         {"_id": user_id},
         {"$set": {"nombre": nombre, "puntos": puntos}},
         upsert=True
     )
 
+def _eliminar_usuario(user_id):
+    coleccion_puntos.delete_one({"_id": user_id})
+
+def _obtener_puntos(user_id):
+    doc = coleccion_puntos.find_one({"_id": user_id})
+    return doc["puntos"] if doc else None
+
+async def cargar_datos():
+    return await asyncio.to_thread(_cargar_datos)
+
+async def agregar_puntos(user_id, nombre, cantidad):
+    return await asyncio.to_thread(_agregar_puntos, user_id, nombre, cantidad)
+
+async def setear_puntos(user_id, nombre, puntos):
+    await asyncio.to_thread(_setear_puntos, user_id, nombre, puntos)
+
 async def eliminar_usuario(user_id):
-    await coleccion_puntos.delete_one({"_id": user_id})
+    await asyncio.to_thread(_eliminar_usuario, user_id)
 
 async def obtener_puntos(user_id):
-    doc = await coleccion_puntos.find_one({"_id": user_id})
-    return doc["puntos"] if doc else None
+    return await asyncio.to_thread(_obtener_puntos, user_id)
 
 def cargar_config():
     if not os.path.exists(CONFIG_FILE):
