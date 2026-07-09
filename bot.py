@@ -5,9 +5,11 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 from dotenv import load_dotenv
+from pymongo import MongoClient
 
 load_dotenv()
 TOKEN = os.getenv("DISCORD_TOKEN")
+MONGO_URI = os.getenv("MONGO_URI")
 
 CONFIG_FILE = "config.json"
 
@@ -16,17 +18,42 @@ intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-DATA_FILE = "puntos.json"
+mongo_client = MongoClient(MONGO_URI)
+db = mongo_client["kaleido"]
+coleccion_puntos = db["puntos"]
 
 def cargar_datos():
-    if not os.path.exists(DATA_FILE):
-        return {}
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+    docs = coleccion_puntos.find()
+    return {d["_id"]: {"nombre": d["nombre"], "puntos": d["puntos"]} for d in docs}
 
-def guardar_datos(datos):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(datos, f, indent=4, ensure_ascii=False)
+def guardar_usuarios(usuarios):
+    coleccion_puntos.delete_many({})
+    if usuarios:
+        docs = [{"_id": uid, "nombre": v["nombre"], "puntos": v["puntos"]} for uid, v in usuarios.items()]
+        coleccion_puntos.insert_many(docs)
+
+def agregar_puntos(user_id, nombre, cantidad):
+    coleccion_puntos.update_one(
+        {"_id": user_id},
+        {"$inc": {"puntos": cantidad}, "$set": {"nombre": nombre}},
+        upsert=True
+    )
+    doc = coleccion_puntos.find_one({"_id": user_id})
+    return doc["puntos"]
+
+def setear_puntos(user_id, nombre, puntos):
+    coleccion_puntos.update_one(
+        {"_id": user_id},
+        {"$set": {"nombre": nombre, "puntos": puntos}},
+        upsert=True
+    )
+
+def eliminar_usuario(user_id):
+    coleccion_puntos.delete_one({"_id": user_id})
+
+def obtener_puntos(user_id):
+    doc = coleccion_puntos.find_one({"_id": user_id})
+    return doc["puntos"] if doc else None
 
 def cargar_config():
     if not os.path.exists(CONFIG_FILE):
@@ -48,15 +75,10 @@ async def on_ready():
 @bot.tree.command(name="addpoints", description="Agrega puntos a un miembro")
 @app_commands.describe(miembro="Miembro a añadir puntos", puntos="Cantidad de puntos")
 async def addpoints(interaction: discord.Interaction, miembro: discord.Member, puntos: int):
-    datos = cargar_datos()
     uid = str(miembro.id)
-    if uid in datos:
-        datos[uid]["puntos"] += puntos
-    else:
-        datos[uid] = {"nombre": miembro.display_name, "puntos": puntos}
-    guardar_datos(datos)
+    total = agregar_puntos(uid, miembro.display_name, puntos)
     await interaction.response.send_message(
-        f"{puntos} puntos agregados a {miembro.mention}. Total: {datos[uid]['puntos']}"
+        f"{puntos} puntos agregados a {miembro.mention}. Total: {total}"
     )
 
 @app_commands.default_permissions(administrator=True)
@@ -64,10 +86,7 @@ async def addpoints(interaction: discord.Interaction, miembro: discord.Member, p
 @bot.tree.command(name="setpoints", description="Establece los puntos exactos de un miembro")
 @app_commands.describe(miembro="Miembro a modificar", puntos="Nuevos puntos")
 async def setpoints(interaction: discord.Interaction, miembro: discord.Member, puntos: int):
-    datos = cargar_datos()
-    uid = str(miembro.id)
-    datos[uid] = {"nombre": miembro.display_name, "puntos": puntos}
-    guardar_datos(datos)
+    setear_puntos(str(miembro.id), miembro.display_name, puntos)
     await interaction.response.send_message(f"Puntos de {miembro.mention} actualizados a {puntos}")
 
 @app_commands.default_permissions(administrator=True)
@@ -75,12 +94,10 @@ async def setpoints(interaction: discord.Interaction, miembro: discord.Member, p
 @bot.tree.command(name="delpoints", description="Elimina un miembro de la lista de puntos")
 @app_commands.describe(miembro="Miembro a eliminar")
 async def delpoints(interaction: discord.Interaction, miembro: discord.Member):
-    datos = cargar_datos()
     uid = str(miembro.id)
-    if uid not in datos:
+    if not obtener_puntos(uid):
         return await interaction.response.send_message("Ese usuario no tiene puntos registrados.")
-    del datos[uid]
-    guardar_datos(datos)
+    eliminar_usuario(uid)
     await interaction.response.send_message(f"{miembro.mention} eliminado de la lista de puntos.")
 
 @bot.tree.command(name="setcanal", description="Configura el canal para respuestas de ranking y puntos")
@@ -183,18 +200,19 @@ async def puntos(interaction: discord.Interaction, miembro: discord.Member = Non
     await interaction.response.defer(ephemeral=True)
     config = cargar_config()
     miembro = miembro or interaction.user
-    datos = cargar_datos()
     uid = str(miembro.id)
-    if uid not in datos:
+    total = obtener_puntos(uid)
+    if total is None:
         return await interaction.followup.send(f"{miembro.mention} no tiene puntos registrados.", ephemeral=True)
+    texto = f"{miembro.mention} tiene **{total}** puntos."
     canal_id = config.get("canal_puntos")
     if canal_id:
         canal = bot.get_channel(int(canal_id))
         if canal:
-            await canal.send(f"{miembro.mention} tiene **{datos[uid]['puntos']}** puntos.")
+            await canal.send(texto)
             await interaction.followup.send(f"Respuesta enviada a {canal.mention}", ephemeral=True)
             return
-    await interaction.followup.send(f"{miembro.mention} tiene **{datos[uid]['puntos']}** puntos.", ephemeral=True)
+    await interaction.followup.send(texto, ephemeral=True)
 
 @bot.tree.command(name="help", description="Muestra todos los comandos disponibles")
 async def help(interaction: discord.Interaction):

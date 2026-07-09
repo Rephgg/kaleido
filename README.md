@@ -23,7 +23,8 @@ Bot de Discord con sistema de puntos para servidores.
 
 - Python 3.14
 - discord.py 2.7.1
-- Almacenamiento local en JSON
+- MongoDB Atlas (nube)
+- Almacenamiento local en JSON (config)
 
 ## Hosting
 

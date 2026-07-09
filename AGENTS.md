@@ -4,10 +4,13 @@ Bot de Discord para sistema de puntos.
 
 ## Archivos principales
 - bot.py - código principal con slash commands (/)
-- .env - token de Discord (NO SUBIR)
-- puntos.json - datos de usuarios y puntos (NO SUBIR)
+- .env - token de Discord + Mongo URI (NO SUBIR)
 - terms.html - términos de servicio (GitHub Pages)
 - privacy.html - política de privacidad (GitHub Pages)
+
+## Almacenamiento
+- MongoDB Atlas (nube) - datos de usuarios y puntos
+- config.json (local) - configuración del servidor (canal, ranking msg)
 
 ## Slash commands globales (funcionan en cualquier servidor)
 - /addpoints @user <cantidad> - suma puntos (solo admin)
@@ -27,4 +30,4 @@ Bot de Discord para sistema de puntos.
 - Desplegado en Render (24/7)
 
 ## Pendiente
-- Migrar almacenamiento a MongoDB Atlas (actualmente JSON local, se pierde en cada deploy de Render)
+- Nada por ahora
