@@ -22,47 +22,49 @@ mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
 db = mongo_client["kaleido"]
 coleccion_puntos = db["puntos"]
 
-def _cargar_datos():
-    docs = list(coleccion_puntos.find())
-    return {d["_id"]: {"nombre": d["nombre"], "puntos": d["puntos"]} for d in docs}
+def _cargar_datos(guild_id):
+    docs = list(coleccion_puntos.find({"guild_id": guild_id}))
+    return {d["user_id"]: {"nombre": d["nombre"], "puntos": d["puntos"]} for d in docs}
 
-def _agregar_puntos(user_id, nombre, cantidad):
+def _agregar_puntos(guild_id, user_id, nombre, cantidad):
+    doc_id = f"{guild_id}_{user_id}"
     coleccion_puntos.update_one(
-        {"_id": user_id},
-        {"$inc": {"puntos": cantidad}, "$set": {"nombre": nombre}},
+        {"_id": doc_id},
+        {"$inc": {"puntos": cantidad}, "$set": {"nombre": nombre, "guild_id": guild_id, "user_id": user_id}},
         upsert=True
     )
-    doc = coleccion_puntos.find_one({"_id": user_id})
+    doc = coleccion_puntos.find_one({"_id": doc_id})
     return doc["puntos"]
 
-def _setear_puntos(user_id, nombre, puntos):
+def _setear_puntos(guild_id, user_id, nombre, puntos):
+    doc_id = f"{guild_id}_{user_id}"
     coleccion_puntos.update_one(
-        {"_id": user_id},
-        {"$set": {"nombre": nombre, "puntos": puntos}},
+        {"_id": doc_id},
+        {"$set": {"nombre": nombre, "puntos": puntos, "guild_id": guild_id, "user_id": user_id}},
         upsert=True
     )
 
-def _eliminar_usuario(user_id):
-    coleccion_puntos.delete_one({"_id": user_id})
+def _eliminar_usuario(guild_id, user_id):
+    coleccion_puntos.delete_one({"_id": f"{guild_id}_{user_id}"})
 
-def _obtener_puntos(user_id):
-    doc = coleccion_puntos.find_one({"_id": user_id})
+def _obtener_puntos(guild_id, user_id):
+    doc = coleccion_puntos.find_one({"_id": f"{guild_id}_{user_id}"})
     return doc["puntos"] if doc else None
 
-async def cargar_datos():
-    return await asyncio.to_thread(_cargar_datos)
+async def cargar_datos(guild_id):
+    return await asyncio.to_thread(_cargar_datos, guild_id)
 
-async def agregar_puntos(user_id, nombre, cantidad):
-    return await asyncio.to_thread(_agregar_puntos, user_id, nombre, cantidad)
+async def agregar_puntos(guild_id, user_id, nombre, cantidad):
+    return await asyncio.to_thread(_agregar_puntos, guild_id, user_id, nombre, cantidad)
 
-async def setear_puntos(user_id, nombre, puntos):
-    await asyncio.to_thread(_setear_puntos, user_id, nombre, puntos)
+async def setear_puntos(guild_id, user_id, nombre, puntos):
+    await asyncio.to_thread(_setear_puntos, guild_id, user_id, nombre, puntos)
 
-async def eliminar_usuario(user_id):
-    await asyncio.to_thread(_eliminar_usuario, user_id)
+async def eliminar_usuario(guild_id, user_id):
+    await asyncio.to_thread(_eliminar_usuario, guild_id, user_id)
 
-async def obtener_puntos(user_id):
-    return await asyncio.to_thread(_obtener_puntos, user_id)
+async def obtener_puntos(guild_id, user_id):
+    return await asyncio.to_thread(_obtener_puntos, guild_id, user_id)
 
 def cargar_config():
     if not os.path.exists(CONFIG_FILE):
@@ -85,7 +87,8 @@ async def on_ready():
 @app_commands.describe(miembro="Miembro a añadir puntos", puntos="Cantidad de puntos")
 async def addpoints(interaction: discord.Interaction, miembro: discord.Member, puntos: int):
     uid = str(miembro.id)
-    total = await agregar_puntos(uid, miembro.display_name, puntos)
+    gid = str(interaction.guild_id)
+    total = await agregar_puntos(gid, uid, miembro.display_name, puntos)
     await interaction.response.send_message(
         f"{puntos} puntos agregados a {miembro.mention}. Total: {total}"
     )
@@ -95,7 +98,8 @@ async def addpoints(interaction: discord.Interaction, miembro: discord.Member, p
 @bot.tree.command(name="setpoints", description="Establece los puntos exactos de un miembro")
 @app_commands.describe(miembro="Miembro a modificar", puntos="Nuevos puntos")
 async def setpoints(interaction: discord.Interaction, miembro: discord.Member, puntos: int):
-    await setear_puntos(str(miembro.id), miembro.display_name, puntos)
+    gid = str(interaction.guild_id)
+    await setear_puntos(gid, str(miembro.id), miembro.display_name, puntos)
     await interaction.response.send_message(f"Puntos de {miembro.mention} actualizados a {puntos}")
 
 @app_commands.default_permissions(administrator=True)
@@ -104,9 +108,10 @@ async def setpoints(interaction: discord.Interaction, miembro: discord.Member, p
 @app_commands.describe(miembro="Miembro a eliminar")
 async def delpoints(interaction: discord.Interaction, miembro: discord.Member):
     uid = str(miembro.id)
-    if not await obtener_puntos(uid):
+    gid = str(interaction.guild_id)
+    if not await obtener_puntos(gid, uid):
         return await interaction.response.send_message("Ese usuario no tiene puntos registrados.")
-    await eliminar_usuario(uid)
+    await eliminar_usuario(gid, uid)
     await interaction.response.send_message(f"{miembro.mention} eliminado de la lista de puntos.")
 
 @bot.tree.command(name="setcanal", description="Configura el canal para respuestas de ranking y puntos")
@@ -153,8 +158,9 @@ def construir_ranking(datos):
 @bot.tree.command(name="ranking", description="Muestra la lista de todos los usuarios con puntos")
 async def ranking(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
+    gid = str(interaction.guild_id)
     config = cargar_config()
-    datos = await cargar_datos()
+    datos = await cargar_datos(gid)
     embed = construir_ranking(datos)
     if not embed:
         return await interaction.followup.send("No hay usuarios registrados.", ephemeral=True)
@@ -190,7 +196,7 @@ async def updateranking(interaction: discord.Interaction):
         msg = await canal.fetch_message(int(msg_id))
     except discord.NotFound:
         return await interaction.followup.send("El mensaje original fue eliminado. Ejecutá /ranking de nuevo.", ephemeral=True)
-    datos = await cargar_datos()
+    datos = await cargar_datos(str(interaction.guild_id))
     embed = construir_ranking(datos)
     if not embed:
         return await interaction.followup.send("No hay usuarios registrados.", ephemeral=True)
@@ -207,10 +213,11 @@ async def say(interaction: discord.Interaction, texto: str):
 @app_commands.describe(miembro="Miembro a consultar (opcional)")
 async def puntos(interaction: discord.Interaction, miembro: discord.Member = None):
     await interaction.response.defer(ephemeral=True)
+    gid = str(interaction.guild_id)
     config = cargar_config()
     miembro = miembro or interaction.user
     uid = str(miembro.id)
-    total = await obtener_puntos(uid)
+    total = await obtener_puntos(gid, uid)
     if total is None:
         return await interaction.followup.send(f"{miembro.mention} no tiene puntos registrados.", ephemeral=True)
     texto = f"{miembro.mention} tiene **{total}** puntos."
