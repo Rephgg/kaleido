@@ -139,7 +139,7 @@ def construir_ranking(datos):
     from datetime import datetime
     ordenados = sorted(datos.items(), key=lambda x: x[1]["puntos"], reverse=True)
     desc = "_Este ranking es un conteo de puntos del servidor, estos se adquieren por participación constante en torneos y quedar en el top 3 del mismo._\n"
-    embed = discord.Embed(title="# Ranking general del servidor", description=desc, color=0xF1C40F)
+    embed = discord.Embed(title="Ranking general del servidor", description=desc, color=0xF1C40F)
     top3 = ""
     resto = ""
     for i, (uid, u) in enumerate(ordenados, 1):
