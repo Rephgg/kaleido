@@ -102,7 +102,7 @@ async def addpoints(interaction: discord.Interaction, miembro: discord.Member, p
     gid = str(interaction.guild_id)
     total = await agregar_puntos(gid, uid, miembro.display_name, puntos)
     await interaction.response.send_message(
-        f"{puntos} puntos agregados a {miembro.mention}. Total: {total}"
+        f"{puntos} puntos agregados a {miembro.display_name}. Total: {total}"
     )
 
 @bot.tree.command(name="setpoints", description="Establece los puntos exactos de un miembro")
@@ -111,7 +111,7 @@ async def addpoints(interaction: discord.Interaction, miembro: discord.Member, p
 async def setpoints(interaction: discord.Interaction, miembro: discord.Member, puntos: int):
     gid = str(interaction.guild_id)
     await setear_puntos(gid, str(miembro.id), miembro.display_name, puntos)
-    await interaction.response.send_message(f"Puntos de {miembro.mention} actualizados a {puntos}")
+    await interaction.response.send_message(f"Puntos de {miembro.display_name} actualizados a {puntos}")
 
 @bot.tree.command(name="delpoints", description="Elimina un miembro de la lista de puntos")
 @es_admin_o_rol()
@@ -122,7 +122,7 @@ async def delpoints(interaction: discord.Interaction, miembro: discord.Member):
     if not await obtener_puntos(gid, uid):
         return await interaction.response.send_message("Ese usuario no tiene puntos registrados.")
     await eliminar_usuario(gid, uid)
-    await interaction.response.send_message(f"{miembro.mention} eliminado de la lista de puntos.")
+    await interaction.response.send_message(f"{miembro.display_name} eliminado de la lista de puntos.")
 
 @bot.tree.command(name="setcanal", description="Configura el canal para respuestas de ranking y puntos")
 @es_admin_o_rol()
@@ -252,8 +252,8 @@ async def puntos(interaction: discord.Interaction, miembro: discord.Member = Non
     uid = str(miembro.id)
     total = await obtener_puntos(gid, uid)
     if total is None:
-        return await interaction.followup.send(f"{miembro.mention} no tiene puntos registrados.", ephemeral=True)
-    texto = f"{miembro.mention} tiene **{total}** puntos."
+        return await interaction.followup.send(f"{miembro.display_name} no tiene puntos registrados.", ephemeral=True)
+    texto = f"{miembro.display_name} tiene **{total}** puntos."
     canal_id = config.get("canal_puntos")
     if canal_id:
         canal = bot.get_channel(int(canal_id))
