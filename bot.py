@@ -76,14 +76,26 @@ def guardar_config(config):
     with open(CONFIG_FILE, "w", encoding="utf-8") as f:
         json.dump(config, f, indent=4, ensure_ascii=False)
 
+def _cargar_roles_admin(config, guild_id):
+    return set(config.get("roles_admin", {}).get(str(guild_id), []))
+
+def es_admin_o_rol():
+    async def predicate(interaction: discord.Interaction) -> bool:
+        config = cargar_config()
+        roles = _cargar_roles_admin(config, interaction.guild_id)
+        return (
+            interaction.user.guild_permissions.administrator
+            or any(r.id in roles for r in interaction.user.roles)
+        )
+    return app_commands.check(predicate)
+
 @bot.event
 async def on_ready():
     await bot.tree.sync()
     print(f"Bot conectado como {bot.user}")
 
-@app_commands.default_permissions(administrator=True)
-@app_commands.checks.has_permissions(administrator=True)
 @bot.tree.command(name="addpoints", description="Agrega puntos a un miembro")
+@es_admin_o_rol()
 @app_commands.describe(miembro="Miembro a añadir puntos", puntos="Cantidad de puntos")
 async def addpoints(interaction: discord.Interaction, miembro: discord.Member, puntos: int):
     uid = str(miembro.id)
@@ -93,18 +105,16 @@ async def addpoints(interaction: discord.Interaction, miembro: discord.Member, p
         f"{puntos} puntos agregados a {miembro.mention}. Total: {total}"
     )
 
-@app_commands.default_permissions(administrator=True)
-@app_commands.checks.has_permissions(administrator=True)
 @bot.tree.command(name="setpoints", description="Establece los puntos exactos de un miembro")
+@es_admin_o_rol()
 @app_commands.describe(miembro="Miembro a modificar", puntos="Nuevos puntos")
 async def setpoints(interaction: discord.Interaction, miembro: discord.Member, puntos: int):
     gid = str(interaction.guild_id)
     await setear_puntos(gid, str(miembro.id), miembro.display_name, puntos)
     await interaction.response.send_message(f"Puntos de {miembro.mention} actualizados a {puntos}")
 
-@app_commands.default_permissions(administrator=True)
-@app_commands.checks.has_permissions(administrator=True)
 @bot.tree.command(name="delpoints", description="Elimina un miembro de la lista de puntos")
+@es_admin_o_rol()
 @app_commands.describe(miembro="Miembro a eliminar")
 async def delpoints(interaction: discord.Interaction, miembro: discord.Member):
     uid = str(miembro.id)
@@ -115,7 +125,7 @@ async def delpoints(interaction: discord.Interaction, miembro: discord.Member):
     await interaction.response.send_message(f"{miembro.mention} eliminado de la lista de puntos.")
 
 @bot.tree.command(name="setcanal", description="Configura el canal para respuestas de ranking y puntos")
-@app_commands.checks.has_permissions(administrator=True)
+@es_admin_o_rol()
 @app_commands.describe(canal="Canal donde se enviarán las respuestas")
 async def setcanal(interaction: discord.Interaction, canal: discord.TextChannel):
     config = cargar_config()
@@ -124,7 +134,7 @@ async def setcanal(interaction: discord.Interaction, canal: discord.TextChannel)
     await interaction.response.send_message(f"Canal de respuestas configurado a {canal.mention}", ephemeral=True)
 
 @bot.tree.command(name="delcanal", description="Elimina la configuración del canal de respuestas")
-@app_commands.checks.has_permissions(administrator=True)
+@es_admin_o_rol()
 async def delcanal(interaction: discord.Interaction):
     config = cargar_config()
     if "canal_puntos" not in config:
@@ -132,6 +142,30 @@ async def delcanal(interaction: discord.Interaction):
     del config["canal_puntos"]
     guardar_config(config)
     await interaction.response.send_message("Canal de respuestas eliminado. Ahora las respuestas vuelven al canal actual.", ephemeral=True)
+
+@bot.tree.command(name="setrol", description="Configura un rol que puede usar los comandos de administración")
+@es_admin_o_rol()
+@app_commands.describe(rol="Rol que tendrá permisos de administración")
+async def setrol(interaction: discord.Interaction, rol: discord.Role):
+    config = cargar_config()
+    roles = _cargar_roles_admin(config, interaction.guild_id)
+    roles.add(rol.id)
+    config.setdefault("roles_admin", {})[str(interaction.guild_id)] = list(roles)
+    guardar_config(config)
+    await interaction.response.send_message(f"Rol {rol.mention} configurado con permisos de administración.", ephemeral=True)
+
+@bot.tree.command(name="delrol", description="Quita permisos de administración a un rol")
+@es_admin_o_rol()
+@app_commands.describe(rol="Rol al que quitar permisos")
+async def delrol(interaction: discord.Interaction, rol: discord.Role):
+    config = cargar_config()
+    roles = _cargar_roles_admin(config, interaction.guild_id)
+    if rol.id not in roles:
+        return await interaction.response.send_message("Ese rol no tiene permisos de administración.", ephemeral=True)
+    roles.discard(rol.id)
+    config.setdefault("roles_admin", {})[str(interaction.guild_id)] = list(roles)
+    guardar_config(config)
+    await interaction.response.send_message(f"Rol {rol.mention} ya no tiene permisos de administración.", ephemeral=True)
 
 def construir_ranking(datos):
     if not datos:
@@ -179,9 +213,8 @@ async def ranking(interaction: discord.Interaction):
     config["ranking_channel_id"] = interaction.channel_id
     guardar_config(config)
 
-@app_commands.default_permissions(administrator=True)
-@app_commands.checks.has_permissions(administrator=True)
 @bot.tree.command(name="updateranking", description="Actualiza el mensaje del ranking con los datos más recientes")
+@es_admin_o_rol()
 async def updateranking(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
     config = cargar_config()
@@ -203,8 +236,8 @@ async def updateranking(interaction: discord.Interaction):
     await msg.edit(embed=embed)
     await interaction.followup.send("Ranking actualizado.", ephemeral=True)
 
-@app_commands.checks.has_permissions(administrator=True)
 @bot.tree.command(name="say", description="El bot repite el texto que escribas")
+@es_admin_o_rol()
 @app_commands.describe(texto="Texto que quieres que diga el bot")
 async def say(interaction: discord.Interaction, texto: str):
     await interaction.response.send_message(texto)
@@ -232,7 +265,12 @@ async def puntos(interaction: discord.Interaction, miembro: discord.Member = Non
 
 @bot.tree.command(name="help", description="Muestra todos los comandos disponibles")
 async def help(interaction: discord.Interaction):
-    es_admin = interaction.user.guild_permissions.administrator
+    config = cargar_config()
+    roles = _cargar_roles_admin(config, interaction.guild_id)
+    es_admin = (
+        interaction.user.guild_permissions.administrator
+        or any(r.id in roles for r in interaction.user.roles)
+    )
     txt = "**📋 Comandos del Bot**\n\n"
     txt += "**📊 Puntos**\n"
     txt += "`/ranking` - Muestra el ranking de todos los usuarios\n"
@@ -245,14 +283,16 @@ async def help(interaction: discord.Interaction):
         txt += "`/delpoints @user` - Elimina usuario de la lista\n"
         txt += "`/setcanal #canal` - Configura canal de respuestas\n"
         txt += "`/delcanal` - Elimina canal configurado\n"
+        txt += "`/setrol @rol` - Da permisos de admin a un rol\n"
+        txt += "`/delrol @rol` - Quita permisos de admin a un rol\n"
     await interaction.response.send_message(txt, ephemeral=True)
 
-@addpoints.error
-@setpoints.error
-@delpoints.error
 async def perm_error(interaction: discord.Interaction, error):
-    if isinstance(error, app_commands.MissingPermissions):
+    if isinstance(error, app_commands.CheckFailure):
         await interaction.response.send_message("No tenés permiso para usar este comando.", ephemeral=True)
+
+for _cmd in [addpoints, setpoints, delpoints, setcanal, delcanal, updateranking, say, setrol, delrol]:
+    _cmd.error(perm_error)
 
 from aiohttp import web
 

@@ -17,7 +17,11 @@ Bot de Discord con sistema de puntos para servidores.
 | `/delcanal` | Elimina canal configurado | Admin |
 | `/updateranking` | Actualiza el mensaje del ranking | Admin |
 | `/say <texto>` | El bot repite el texto | Admin |
+| `/setrol @rol` | Da permisos de admin a un rol | Admin |
+| `/delrol @rol` | Quita permisos de admin a un rol | Admin |
 | `/help` | Muestra todos los comandos | Todos |
+
+Los comandos de Admin pueden usarlos los administradores del servidor o los roles configurados con `/setrol`.
 
 ## Stack
 

@@ -22,7 +22,13 @@ Bot de Discord para sistema de puntos.
 - /delcanal - elimina canal configurado (solo admin)
 - /updateranking - actualiza el mensaje del ranking existente con datos recientes + timestamp (solo admin)
 - /say <texto> - el bot repite el texto (solo admin)
+- /setrol @rol - da permisos de admin a un rol (solo admin)
+- /delrol @rol - quita permisos de admin a un rol (solo admin)
 - /help - muestra todos los comandos disponibles
+
+## Permisos
+- Los comandos de admin requieren ser administrador del servidor O tener un rol configurado con /setrol
+- Los roles configurados se guardan en config.json bajo "roles_admin" (por servidor)
 
 ## Hosting
 - Código en GitHub: https://github.com/Rephgg/kaleido
